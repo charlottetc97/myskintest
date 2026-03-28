@@ -1,1 +1,1 @@
-# myskintest
+# baumann-skin-type-questionnaire
