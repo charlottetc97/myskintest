@@ -2,83 +2,120 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AKIMIA 膚質測試</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AKIMIA 16型膚質測驗</title>
     <style>
-        body { font-family: sans-serif; background: #f9f9f9; display: flex; justify-content: center; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        .option { display: block; width: 100%; margin: 10px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-        .option:active { background: #e0f2f1; border-color: #26a69a; }
+        :root { --primary: #26a69a; --secondary: #546e7a; --bg: #fdfdfd; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
+        .card { background: white; width: 92%; max-width: 450px; border-radius: 24px; padding: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.08); box-sizing: border-box; }
+        .step-indicator { font-size: 0.8rem; color: var(--primary); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .progress-container { width: 100%; height: 4px; background: #eee; border-radius: 2px; margin-bottom: 25px; }
+        .progress-bar { height: 100%; background: var(--primary); width: 0%; transition: 0.5s ease; }
+        h2 { font-size: 1.3rem; margin-bottom: 25px; line-height: 1.4; min-height: 3.6rem; }
+        .option { display: block; width: 100%; margin-bottom: 12px; padding: 18px; border: 1px solid #eaeaea; border-radius: 16px; cursor: pointer; transition: all 0.2s; font-size: 1rem; text-align: left; background: #fff; }
+        .option:active { background: #f0fdfa; border-color: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(38, 166, 154, 0.15); }
         .hidden { display: none; }
-        .progress { height: 5px; background: #eee; margin-bottom: 20px; }
-        .progress-bar { height: 100%; background: #26a69a; width: 0%; transition: 0.5s; }
+        .result-code { font-size: 3rem; font-weight: 900; color: var(--primary); margin: 10px 0; letter-spacing: 4px; }
+        .tag-container { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tag { background: #e0f2f1; color: var(--primary); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .desc-box { text-align: left; background: #f8f9fa; padding: 20px; border-radius: 16px; line-height: 1.7; font-size: 0.95rem; }
+        .btn-reset { margin-top: 25px; width: 100%; padding: 15px; border: none; background: var(--primary); color: white; border-radius: 12px; font-size: 1rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="card" id="quiz-container">
-    <div class="progress"><div class="progress-bar" id="progress"></div></div>
-    <h2 id="question">載入中...</h2>
+    <div class="step-indicator" id="step-label">STEP 1 / 4</div>
+    <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+    <h2 id="question">正在載入問題...</h2>
     <div id="options"></div>
 </div>
 
 <div class="card hidden" id="result-container">
-    <h2>你的膚質是：</h2>
-    <h1 id="skin-type" style="color: #26a69a;"></h1>
-    <p id="description"></p>
-    <button onclick="location.reload()" style="padding: 10px 20px;">重新測試</button>
+    <p style="margin:0; color: #888;">你的專屬膚質代碼</p>
+    <div class="result-code" id="final-code"></div>
+    <div class="tag-container" id="tags"></div>
+    <div class="desc-box" id="result-desc"></div>
+    <button class="btn-reset" onclick="location.reload()">重新檢測</button>
 </div>
 
 <script>
+    // 每個 Step 的二選一結果
     const questions = [
-        { q: "早上起床時，臉部的出油狀況？", options: {A:"全臉明顯油光", B:"T字出油兩頰乾", C:"不油也不乾", D:"緊繃起屑"} },
-        { q: "洗完臉 15 分鐘後的感覺？", options: {A:"很快就出油", B:"兩頰明顯緊繃", C:"微微緊繃", D:"刺痛泛紅"} }
-        // ...以此類推添加更多題目
+        { step: 1, q: "你的出油頻率與毛孔狀況？", options: [
+            { text: "經常油光滿面、毛孔粗大 (O)", val: "O" },
+            { text: "皮膚乾燥緊繃、毛孔細小 (D)", val: "D" }
+        ]},
+        { step: 2, q: "皮膚受刺激時（如換季或酒精）的反應？", options: [
+            { text: "容易泛紅、發癢或刺痛 (S)", val: "S" },
+            { text: "皮膚健康，很少有過敏現象 (R)", val: "R" }
+        ]},
+        { step: 3, q: "你的膚色均勻度與斑點狀況？", options: [
+            { text: "容易留下痘印或有色斑沉澱 (P)", val: "P" },
+            { text: "膚色較均勻，不易長斑 (N)", val: "N" }
+        ]},
+        { step: 4, q: "觀察眼周與額頭的紋路表現？", options: [
+            { text: "已有細紋或皮膚容易鬆弛 (W)", val: "W" },
+            { text: "皮膚緊緻、富有彈性 (T)", val: "T" }
+        ]}
     ];
 
     let currentStep = 0;
-    let scores = { A:0, B:0, C:0, D:0 };
+    let userResult = "";
 
-    function showQuestion() {
+    function render() {
         if (currentStep >= questions.length) return showResult();
-        
-        const qData = questions[currentStep];
-        document.getElementById('question').innerText = qData.q;
-        const optionsDiv = document.getElementById('options');
-        optionsDiv.innerHTML = '';
-        
-        for (let key in qData.options) {
-            let btn = document.createElement('div');
-            btn.className = 'option';
-            btn.innerText = qData.options[key];
-            btn.onclick = () => { scores[key]++; currentStep++; updateProgress(); showQuestion(); };
-            optionsDiv.appendChild(btn);
-        }
-    }
 
-    function updateProgress() {
-        document.getElementById('progress').style.width = (currentStep / questions.length) * 100 + '%';
+        const data = questions[currentStep];
+        document.getElementById('step-label').innerText = `STEP ${currentStep + 1} / 4`;
+        document.getElementById('progress').style.width = ((currentStep) / 4) * 100 + "%";
+        document.getElementById('question').innerText = data.q;
+        
+        const optDiv = document.getElementById('options');
+        optDiv.innerHTML = "";
+        
+        data.options.forEach(opt => {
+            const btn = document.createElement('div');
+            btn.className = "option";
+            btn.innerText = opt.text;
+            btn.onclick = () => {
+                userResult += opt.val;
+                currentStep++;
+                render();
+            };
+            optDiv.appendChild(btn);
+        });
     }
 
     function showResult() {
         document.getElementById('quiz-container').classList.add('hidden');
         document.getElementById('result-container').classList.remove('hidden');
-        
-        // 找出得分最高的代號
-        const topType = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
-        const results = {
-            A: "油性肌膚 - 建議使用清爽控油系列",
-            B: "混合性肌膚 - 建議分區精準保養",
-            C: "中性肌膚 - 維持現狀保濕即可",
-            D: "乾性肌膚 - 需要強效補水與滋養"
+        document.getElementById('final-code').innerText = userResult;
+
+        // 簡單的標籤對應邏析
+        const labels = { 
+            'O':'油性', 'D':'乾性', 'S':'敏感', 'R':'耐受', 
+            'P':'色素', 'N':'非色素', 'W':'皺紋', 'T':'緊緻' 
         };
-        document.getElementById('skin-type').innerText = topType;
-        document.getElementById('description').innerText = results[topType];
+        
+        const tagContainer = document.getElementById('tags');
+        userResult.split('').forEach(char => {
+            const span = document.createElement('span');
+            span.className = 'tag';
+            span.innerText = labels[char];
+            tagContainer.appendChild(span);
+        });
+
+        // 簡單分析內容 (這裡可以根據 16 種組合細化)
+        document.getElementById('result-desc').innerHTML = `
+            <strong>分析報告：</strong><br>
+            你的膚質屬於「${userResult}」。這意味著你在保養上需要特別注意水油平衡與防禦。<br><br>
+            由於你即將前往韓國，這類型的肌膚在乾燥環境下可能會有特定反應。建議選用 AKIMIA 針對 ${userResult.includes('S') ? '敏感肌' : '一般肌'} 設計的微電流面膜。
+        `;
     }
 
-    showQuestion();
+    render();
 </script>
 
 </body>
 </html>
-
